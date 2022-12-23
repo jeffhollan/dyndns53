@@ -153,6 +153,10 @@ Add DynDNS
 server:
 `something.execute-api.us-east-1.amazonaws.com/v1/nic/update?hostname=`
 
+Test with:
+1. ssh into dream machine
+2. `/usr/sbin/inadyn -n -s -C -f /run/ddns-eth8-inadyn.conf  -1 -l debug --foreground`
+
 ## Other options
 
 - https://aws.amazon.com/blogs/compute/building-a-dynamic-dns-for-route-53-using-cloudwatch-events-and-lambda/
