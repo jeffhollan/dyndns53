@@ -46,9 +46,54 @@ class AbuseException(Exception):
 conf = {
     'username:password': {
         'hosts': {
-            'myurl.com': {
+            'domain.io.': {
                 'aws_region': 'us-west-2',
-                'zone_id': '<zone-id>',
+                'zone_id': 'Z1X3TIORS078SW',
+                'record': {
+                    'ttl': 60,
+                    'type': 'A',
+                },
+                'last_update': None,
+            },
+            't.domain.io.': {
+                'aws_region': 'us-west-2',
+                'zone_id': 'Z1X3TIORS078SW',
+                'record': {
+                    'ttl': 60,
+                    'type': 'A',
+                },
+                'last_update': None,
+            },
+            'm.domain.io.': {
+                'aws_region': 'us-west-2',
+                'zone_id': 'Z1X3TIORS078SW',
+                'record': {
+                    'ttl': 60,
+                    'type': 'A',
+                },
+                'last_update': None,
+            },
+            's.domain.io.': {
+                'aws_region': 'us-west-2',
+                'zone_id': 'Z1X3TIORS078SW',
+                'record': {
+                    'ttl': 60,
+                    'type': 'A',
+                },
+                'last_update': None,
+            },
+            'e.domain.io.': {
+                'aws_region': 'us-west-2',
+                'zone_id': 'Z1X3TIORS078SW',
+                'record': {
+                    'ttl': 60,
+                    'type': 'A',
+                },
+                'last_update': None,
+            },
+            'vouch.domain.io.': {
+                'aws_region': 'us-west-2',
+                'zone_id': 'Z1X3TIORS078SW',
                 'record': {
                     'ttl': 60,
                     'type': 'A',
@@ -104,7 +149,7 @@ def r53_upsert(host, hostconf, ip):
 
     if old_ip == ip:
         logger.debug("Old IP same as new IP: {}".format(ip))
-        return False
+        return False, "not updated"
 
     logger.debug("Old IP was: {}".format(old_ip))
     return_status = client53.change_resource_record_sets(
@@ -128,7 +173,7 @@ def r53_upsert(host, hostconf, ip):
         }
     )
 
-    return True
+    return True, "updated"
 
 
 def _handler(event, context):
@@ -156,10 +201,10 @@ def _handler(event, context):
     try:
         hosts = set(h if h.endswith('.') else h+'.' for h in
                     event['querystring']['hostname'].split(','))
-
     except KeyError as e:
         raise BadAgentException("Hostname(s) required but not provided.")
 
+    print(hosts)
     if any(host not in conf[auth_string]['hosts'] for host in hosts):
         raise HostnameException()
 
@@ -171,10 +216,15 @@ def _handler(event, context):
         msg = "User omitted IP address, using best-guess from $context: {}"
         logger.debug(msg.format(ip))
 
-    if any(r53_upsert(host, conf[auth_string]['hosts'][host], ip) for host in hosts):
-        return "good {}".format(ip)
-    else:
-        return "nochg {}".format(ip)
+    results = [(host, r53_upsert(host, conf[auth_string]['hosts'][host], ip)) for host in hosts]
+    updated_hosts = [host for host, (updated, msg) in results if updated]
+    unchanged_hosts = [host for host, (updated, msg) in results if not updated]
+    
+    if updated_hosts:
+        return "good " + ', '.join(updated_hosts) + f" with IP {ip}"
+    if unchanged_hosts:
+        return "nochg " + ', '.join(unchanged_hosts) + f" with IP {ip}"
+    return "nochg"
 
 
 def lambda_handler(event, context):
